@@ -8,5 +8,4 @@ format: html
 editor: visual
 ---
 
-yo sup playa!
-is this thing on lol?
+yo sup playa! is this thing on lol?
