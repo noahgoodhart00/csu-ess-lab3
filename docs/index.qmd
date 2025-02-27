@@ -1,0 +1,12 @@
+---
+title: "Lab 3: COVID-19"
+subtitle: "Ecosystem Science and Sustainability 330"
+author: 
+  - name: Noah Goodhart
+    email: noahwg@rams.colostate.edu
+output-dir: docs
+format: html
+editor: visual
+---
+
+
