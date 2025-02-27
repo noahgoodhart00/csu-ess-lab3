@@ -8,5 +8,3 @@ output-dir: docs
 format: html
 editor: visual
 ---
-
-
