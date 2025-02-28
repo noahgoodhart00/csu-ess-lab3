@@ -8,8 +8,7 @@ format: html
 editor: visual
 ---
 
-yo sup playa! is this thing on lol?
-I think it's working!
+Libraries
 
 ```{r}
 library(tidyverse)
