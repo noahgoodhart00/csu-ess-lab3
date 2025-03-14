@@ -425,5 +425,5 @@ ggplot() +
   coord_fixed(ratio = 1.0) 
 
 ```
-As you can see from the map, the outbreak started roughly on the East Coast. There were large cities such as New York and Miami, who had the first outbreaks, which is why some of the early data points look like they fall in the Atlantic Ocean. As time went on, the outbreaks traveled to more mid-western/southern states, where there is a more rural population. This makes sense, because during a pandemic, large, closely populated areas will report lots of cases, because it can spread super quick. Later in the pandemic, rural areas will be hit harder, most likely due to poor management of the spread of the disease, but it will take a while to reach them.
+As you can see from the map, the outbreak started roughly on the East Coast. There were large cities such as New York and Miami, who had the first outbreaks, which is why some of the early data points look like they fall in the Atlantic Ocean. As time went on, the outbreaks traveled to more mid-western/southern states, where there is a more rural population. This makes sense, because during a pandemic, large, closely populated areas will report lots of cases, because it can spread super quick. Later in the pandemic, rural areas will be hit harder, most likely due to poor management of the spread of the disease, but it will take a while to reach them. 
 
