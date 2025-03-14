@@ -25,6 +25,7 @@ library(zoo)
 library(dplyr)
 library(readr)
 library(stringr)
+library(ggplot2)
 ```
 
 This is the url I am getting the data from.
@@ -68,7 +69,6 @@ top_new_cases <- colorado_covid %>%
 
 top_cumulative_cases %>% flextable()
 top_new_cases %>% flextable()
-
 ```
 Question 3:
 
@@ -92,7 +92,6 @@ population_clean <- population_data %>%
   ) %>%
   select(FIPS, contains("NAME"), contains("2021")) %>%
   filter(substr(FIPS, 3, 5) != "000") 
-
 ```
 
 Question 3.2:
@@ -113,7 +112,6 @@ colorado_covid <- colorado_covid %>%
     per_capita_new_cases = new_cases / POPESTIMATE2021,
     per_capita_new_deaths = new_deaths / POPESTIMATE2021
   )
-
 ```
 
 Question 3.5
@@ -132,7 +130,6 @@ table_1 <- covid_jan_1_2021 %>%
   select(county, per_capita_cumulative_cases) %>%
   flextable() %>%
   set_caption("Top 5 Colorado Counties with the most Cumulative Cases per Capita on 2021-01-01")
-
 ```
 
 Then I will do the same for per capita new cases
@@ -150,4 +147,85 @@ Now we just need to view the tables
 table_1
 table_2
 ```
+
+Question 4:
+
+First I have to create a value that is the last 14 days, December 18th through the 31st, and make it so each day is recorded, and not just those two dates.
+```{r}
+last_14_days <- seq(as.Date("2021-12-18"), as.Date("2021-12-31"), by = "day")
+```
+
+Then I have to make a new data frame from the Colorado Covid data frame with tjust the selected days.
+```{r}
+colorado_covid_last_14 <- colorado_covid %>%
+  filter(date %in% last_14_days)
+```
+
+Then I have to group this new data frame by county, summarize the new cases, and calculate the new cases by 100,000
+
+```{r}
+county_cases_summary <- colorado_covid_last_14 %>%
+  group_by(county) %>%
+  summarize(
+    total_new_cases = sum(new_cases, na.rm = TRUE),
+    population = unique(POPESTIMATE2021),
+    new_cases_per_100k = (total_new_cases / population) * 100000
+  )
+```
+
+After that, I have to find out which counties are on the "watch list," and then list the top 5, and count how many "watch list" counties there are in Colorado. 
+
+```{r}
+watch_list_counties <- county_cases_summary %>%
+  filter(new_cases_per_100k > 100) %>%
+  arrange(desc(new_cases_per_100k)) 
+
+top_watch_list_counties <- watch_list_counties %>% 
+  head(5)
+
+print(top_watch_list_counties)
+count(watch_list_counties)
+```
+Question 5:
+
+First I have to create a new data frame based on colorado_covid that only has 2021 dates. I'll group this data frame by county, and sum the death toll by county.
+```{r}
+covid_deaths_colorado_2021 <- colorado_covid %>%
+  filter(date >= "2021-01-01" & date <= "2021-12-31") %>%
+  group_by(county) %>%
+  summarize(covid_deaths = sum(new_deaths, na.rm = TRUE))
+```
+
+Next I'm going to add the total deaths by county to the data frame with just the covid deaths. Then I will add a column that shows the ratio of covid deaths to total deaths.
+```{r}
+covid_deaths_with_total <- covid_deaths_colorado_2021 %>%
+  left_join(colorado_covid %>%
+              select(county, DEATHS2021) %>%
+              distinct(), by = "county") %>%
+  mutate(death_ratio = (covid_deaths / DEATHS2021) * 100)
+```
+
+Next I have to find the counties with a high (20% or more) death ratio.
+```{r}
+high_ratio_counties <- covid_deaths_with_total %>%
+  filter(death_ratio >= 20) %>%
+  arrange(desc(death_ratio))
+```
+
+Finally, I will create a plot showing all of these high ratio counties.
+```{r}
+ggplot(high_ratio_counties, aes(x = reorder(county, death_ratio), y = death_ratio)) +
+  geom_bar(stat = "identity", fill = "lavender") +
+  coord_flip() + 
+  labs(
+    title = str_wrap("Counties in Colorado where COVID Deaths Account for 20% or More of Total Deaths in 2021", width = 50),
+    x = "County",
+    y = "COVID Deaths (%)"
+  ) +
+  theme_minimal()
+```
+
+
+
+
 
