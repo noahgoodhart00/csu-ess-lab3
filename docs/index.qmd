@@ -6,7 +6,15 @@ author:
     email: noahwg@rams.colostate.edu
 format: html
 editor: visual
+self-contained: TRUE
 ---
+
+Question 1: How does easy access to historical and real-time environmental data shape our understanding of climate trends, resource management, and public health? What happens when this data disappears or becomes inaccessible?
+
+Answer: Easy access to historical and real-time environmental data enhances climate models, informs conservation efforts, and supports early warning systems for disasters and disease outbreaks. When this data becomes inaccessible, it weakens scientific research, hampers policy decisions, and leaves communities more vulnerable to environmental risks.
+
+Question 2:
+
 
 Libraries
 
@@ -14,5 +22,84 @@ Libraries
 library(tidyverse)
 library(flextable)
 library(zoo)
+library(dplyr)
+library(readr)
+library(stringr)
 ```
+
+This is the url I am getting the data from.
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv")
+```
+
+Creating new objects.
+```{r}
+my.date <- as.Date("2022-02-01")
+
+my.state <- "Colorado"
+```
+
+Here I made a new subset that limits the data to Colorado, plus adding 2 new columns, one for daily new cases, and daily new deaths.
+```{r}
+colorado_covid <- covid %>%
+  filter(state == "Colorado") %>%  
+  group_by(county) %>% 
+  arrange(date, .by_group = TRUE) %>% 
+  mutate(
+    new_cases = cases - lag(cases, default = 0), 
+    new_deaths = deaths - lag(deaths, default = 0) 
+  ) %>%
+  ungroup()
+```
+
+Using this code, I generated 2 tables. One with the 5 counties with the most cumulative cases, and the second one with the 5 most new cases. Below are the two tables for question 2.
+```{r}
+top_cumulative_cases <- colorado_covid %>%
+  filter(date == my.date) %>%
+  arrange(desc(cases)) %>%
+  select(county, cases) %>%
+  head(5)
+
+top_new_cases <- colorado_covid %>%
+  filter(date == my.date) %>%
+  arrange(desc(new_cases)) %>%
+  select(county, new_cases) %>%
+  head(5)
+
+top_cumulative_cases %>% flextable()
+top_new_cases %>% flextable()
+
+```
+Question 3:
+
+Next, converted the state and county column to a character from a numeric, and created an FIP variable.
+```{r}
+colorado_covid <- colorado_covid %>%
+  mutate(
+    state = str_pad(as.character(state), width = 2, side = "left", pad = "0"),
+    county = str_pad(as.character(county), width = 3, side = "left", pad = "0"),
+    FIPS = paste0(state, county)
+  )
+
+```
+
+In this next step I am cleaning up population data, creating a 5 digit FIP variable, keeping only columns that have "2021" in their name.
+```{r}
+library(here)
+population_data <- read.csv(here("data", "co-est2023-alldata.csv"))
+
+population_clean <- population_data %>%
+  mutate(
+    STATE = str_pad(as.character(STATE), width = 2, side = "left", pad = "0"),
+    COUNTY = str_pad(as.character(COUNTY), width = 3, side = "left", pad = "0"),
+    FIPS = paste0(STATE, COUNTY)
+  ) %>%
+  select(FIPS, contains("NAME"), contains("2021")) %>%
+  filter(substr(FIPS, 3, 5) != "000") 
+
+```
+
+
+
+
 
