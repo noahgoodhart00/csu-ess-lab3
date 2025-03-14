@@ -224,8 +224,125 @@ ggplot(high_ratio_counties, aes(x = reorder(county, death_ratio), y = death_rati
   ) +
   theme_minimal()
 ```
+Question 6:
+
+First I need to create a new data frame with the 4 states of interest, New York, Colorado, Alabama, and Ohio. Then I will group them by state and date, and sum all of the new cases by state.
+```{r}
+state_covid <- covid %>%
+  filter(state %in% c("New York", "Colorado", "Alabama", "Ohio")) %>%  
+  group_by(state, date) %>% 
+  summarize(
+    daily_new_cases = sum(cases, na.rm = TRUE),  # Sum daily new cases at the state level
+    .groups = "drop"
+  ) %>%
+  arrange(state, date)
+```
+
+Next I need to calculate the 7-day rolling mean of the daily new cases.
+```{r}
+state_covid <- state_covid %>%
+  group_by(state) %>%
+  mutate(
+    rolling_mean = rollmean(daily_new_cases, 7, fill = NA, align = "right") 
+  ) %>%
+  ungroup()
+```
+
+Then I will create a facet plot of the daily new cases and the 7-day rolling mean.
+```{r}
+library(scales)
+state_covid$date <- as.Date(state_covid$date)
+ggplot(state_covid, aes(x = date, y = daily_new_cases)) +
+  geom_bar(stat = "identity", fill = "lightpink") +
+  geom_line(aes(y = rolling_mean), color = "lightgreen", linewidth = 1) +  
+  facet_wrap(~ state, scales = "free_x") +  
+  theme_minimal() +
+  labs(
+    title = "Daily New COVID-19 Cases by State (With 7-Day Rolling Mean)",
+    x = "Date",
+    y = "Daily New Cases"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),  
+    plot.title = element_text(size = 14, hjust = 0.5),
+    strip.text.x = element_text(size = 10)  
+  ) +
+  scale_x_date(
+    breaks = "2 month",  
+    labels = date_format("%b %d"),  
+    expand = c(0.01, 0.01)  
+  )
+```
+
+For the next part of the question, I will filter the population data to keep only the state totals. (Filter out the individual county's data.) I also renamed one of the columns to make the join work.
+
+```{r}
+state_population <- population_data %>%
+  filter(COUNTY == "0") 
+
+state_population <- state_population %>% 
+  rename(state = STNAME)
+```
+
+Then I will join the the state population data to the state covid data.
+```{r}
+state_covid_population <- state_covid %>%
+  left_join(state_population, by = "state") 
+```
+
+Next I have to calculate the new cases per capita, for each year.
+```{r}
+state_covid_population <- state_covid_population %>%
+  mutate(
+    new_cases_per_capita_2020 = daily_new_cases / POPESTIMATE2020,  
+    new_cases_per_capita_2021 = daily_new_cases / POPESTIMATE2021,  
+    new_cases_per_capita_2022 = daily_new_cases / POPESTIMATE2022  
+  )
+```
+
+Then I need to calculate the 7-day rolling mean of new cases per capita for each year.
+```{r}
+state_covid_population <- state_covid_population %>%
+  group_by(state) %>%
+  arrange(date) %>%
+  mutate(
+    rolling_mean_per_capita_2020 = rollmean(new_cases_per_capita_2020, 7, fill = NA, align = "right"), 
+    rolling_mean_per_capita_2021 = rollmean(new_cases_per_capita_2021, 7, fill = NA, align = "right"),  
+    rolling_mean_per_capita_2022 = rollmean(new_cases_per_capita_2022, 7, fill = NA, align = "right")   
+  ) %>%
+  ungroup()
+```
+
+I then have to average the rolling mean values from all three years, to get one value. Finally, I will create a plot for the 7-day rolling mean per capita.
+```{r}
+state_covid_combined <- state_covid_population %>%
+  select(state, date, rolling_mean_per_capita_2020, rolling_mean_per_capita_2021, rolling_mean_per_capita_2022) %>%
+  mutate(combined_rolling_mean = rowMeans(select(., starts_with("rolling_mean_per_capita")), na.rm = TRUE))
 
 
+ggplot(state_covid_combined, aes(x = date, y = combined_rolling_mean)) +
+  geom_line(color = "purple", size = 1.2) + 
+  facet_wrap(~ state, scales = "free_x") +  
+  labs(
+    title = "7-Day Rolling Average of New COVID-19 Cases Per Capita (2020-2022)",
+    x = "Date",
+    y = "7-Day Rolling Mean of New Cases Per Capita"
+  ) +
+  theme_minimal() + 
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 14, hjust = 0.5),
+    strip.text.x = element_text(size = 12)
+  ) +
+  scale_x_date(
+    breaks = "2 month",  
+    labels = scales::date_format("%b %d"),  
+    expand = c(0.01, 0.01)  
+  )
+```
 
+Scaling the 7-day rolling mean by the population shows that all of the states have relative similar data. At first, New York looked much worse than the others, but we can see in this adjusted graph, that was only because New York has such a large population.
+
+Question 7:
 
 
