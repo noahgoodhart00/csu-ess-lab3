@@ -319,30 +319,105 @@ state_covid_combined <- state_covid_population %>%
   select(state, date, rolling_mean_per_capita_2020, rolling_mean_per_capita_2021, rolling_mean_per_capita_2022) %>%
   mutate(combined_rolling_mean = rowMeans(select(., starts_with("rolling_mean_per_capita")), na.rm = TRUE))
 
-
-ggplot(state_covid_combined, aes(x = date, y = combined_rolling_mean)) +
-  geom_line(color = "purple", size = 1.2) + 
-  facet_wrap(~ state, scales = "free_x") +  
+ggplot(state_covid_combined, aes(x = date, y = combined_rolling_mean, color = state)) +
+  geom_line(size = 1.2) +  
   labs(
     title = "7-Day Rolling Average of New COVID-19 Cases Per Capita (2020-2022)",
     x = "Date",
-    y = "7-Day Rolling Mean of New Cases Per Capita"
+    y = "Combined Rolling Mean of New Cases Per Capita"
   ) +
-  theme_minimal() + 
+  theme_minimal() +  
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
-    plot.title = element_text(size = 14, hjust = 0.5),
+    plot.title = element_text(size = 12, hjust = 0.5),  
     strip.text.x = element_text(size = 12)
   ) +
   scale_x_date(
-    breaks = "2 month",  
-    labels = scales::date_format("%b %d"),  
+    breaks = "1 month", 
+    labels = scales::date_format("%b %d"), 
     expand = c(0.01, 0.01)  
   )
 ```
 
-Scaling the 7-day rolling mean by the population shows that all of the states have relative similar data. At first, New York looked much worse than the others, but we can see in this adjusted graph, that was only because New York has such a large population.
+
+
+Scaling the 7-day rolling mean by the population shows that all of the states have relative similar data. At first, New York looked much worse than the others, but we can see in this adjusted graph, that was only because New York has such a large population. Without scaling the covid data by population, Alabama looks like it has the smallest 7-day rolling mean, but in the above graph, we can see that it has the worst value for a majority of the time.
 
 Question 7:
+
+First I will create a data frame for the new data I will be using.
+```{r}
+county_centroids <- read_csv("https://raw.githubusercontent.com/mikejohnson51/csu-ess-330/refs/heads/main/resources/county-centroids.csv")
+```
+Then, I will edit the raw covid data to make sure the FIPS line up correctly, and make sure the FIPS are both integers. This way I can join them with the county_centroids data frame.
+```{r}
+covid <- covid %>%
+  mutate(FIPS = str_pad(as.character(fips), width = 5, side = "left", pad = "0"))
+
+covid <- covid %>%
+  mutate(fips = as.integer(fips))
+
+county_centroids <- county_centroids %>%
+  mutate(fips = as.integer(fips))
+
+covid_with_centroids <- covid %>%
+  left_join(county_centroids, by = "fips")
+
+covid_with_centroids <- covid_with_centroids %>% 
+  mutate(date = as.Date(date))
+```
+
+I then calculated the weighted mean center for each day.
+```{r}
+weighted_mean_center <- covid_with_centroids %>%
+  mutate(weight = cases) %>%
+  group_by(date) %>%
+  summarize(
+    Xcoord = sum(LON * weight, na.rm = TRUE) / sum(weight, na.rm = TRUE),
+    Ycoord = sum(LAT * weight, na.rm = TRUE) / sum(weight, na.rm = TRUE),
+    total_cases_day = sum(cases, na.rm = TRUE)
+  )
+```
+
+I then did the same thing as above, but for each month.
+```{r}
+weighted_mean_center_monthly <- covid_with_centroids %>%
+  mutate(
+    weight = cases,
+    year_month = format(date, "%Y-%m")  
+  ) %>%
+  group_by(year_month) %>%
+  summarize(
+    Xcoord = sum(LON * weight, na.rm = TRUE) / sum(weight, na.rm = TRUE),
+    Ycoord = sum(LAT * weight, na.rm = TRUE) / sum(weight, na.rm = TRUE),
+    total_cases_month = sum(cases, na.rm = TRUE)
+  )
+```
+
+Finally, I created the plot.
+```{r}
+ggplot() +
+  borders("state", fill = "gray90", colour = "white") + 
+  geom_point(
+    data = weighted_mean_center,
+    aes(x = Xcoord, y = Ycoord, color = as.factor(format(date, "%Y-%m")), size = total_cases_day),
+    alpha = 0.7  
+  ) +
+  scale_color_viridis_d(option = "plasma") + 
+  scale_size(range = c(2, 8)) + 
+  labs(
+    title = "Weighted Mean Center of COVID-19 Cases in the USA",
+    subtitle = "Colored by Month, Sized by Daily Total Cases",
+    x = "Longitude",
+    y = "Latitude",
+    color = "Month",
+    size = "Total Cases"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, hjust = 0.5),
+    legend.position = "right"
+  )
+```
 
 
