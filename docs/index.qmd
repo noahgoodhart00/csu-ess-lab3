@@ -72,15 +72,11 @@ top_new_cases %>% flextable()
 ```
 Question 3:
 
-Next, converted the state and county column to a character from a numeric, and created an FIP variable.
+Here I added a 0 to the fips column and changed it to uppercase FIPS so it will match the population data's FIPS column. 
 ```{r}
 colorado_covid <- colorado_covid %>%
-  mutate(
-    state = str_pad(as.character(state), width = 2, side = "left", pad = "0"),
-    county = str_pad(as.character(county), width = 3, side = "left", pad = "0"),
-    FIPS = paste0(state, county)
-  )
-
+  mutate(fips = str_pad(fips, width = 5, side = "left", pad = "0")) %>% 
+  rename(FIPS = fips)
 ```
 
 In this next step I am cleaning up population data, creating a 5 digit FIP variable, keeping only columns that have "2021" in their name.
@@ -99,7 +95,59 @@ population_clean <- population_data %>%
 
 ```
 
+Question 3.2:
+The clean data now has a total of 19 columns, all with 2021 data. The columns range from estimates of population, change in population, births & deaths, migration statistics, to rates of change of the previous columns. The death columns are most likely impacted by the COVID pandemic, but the data in the population csv doesn't show COVID deaths compared to all others. 
 
+Question 3.3:
+The populations range from a population estimate, international migration, domestic migration, to net migration.
 
+Question 3.4
+Here I joined the two data frames by FIPS, then created new columns for Per Capita: cumulative cases, new cases, and new deaths.
+```{r}
+colorado_covid <- colorado_covid %>%
+  left_join(population_clean, by = "FIPS")
 
+colorado_covid <- colorado_covid %>% 
+  mutate(
+    per_capita_cumulative_cases = cases / POPESTIMATE2021,
+    per_capita_new_cases = new_cases / POPESTIMATE2021,
+    per_capita_new_deaths = new_deaths / POPESTIMATE2021
+  )
+
+```
+
+Question 3.5
+
+The first step is creating a new data frame just for Janurary 1st, 2021.
+```{r}
+covid_jan_1_2021 <- colorado_covid %>%
+  filter(date == "2021-01-01")
+```
+
+The next step is creating a table with the top five counties with the most per capita cumulative cases with the data I calculated in the previous step.
+```{r}
+table_1 <- covid_jan_1_2021 %>%
+  arrange(desc(per_capita_cumulative_cases)) %>%
+  head(5) %>%
+  select(county, per_capita_cumulative_cases) %>%
+  flextable() %>%
+  set_caption("Top 5 Colorado Counties with the most Cumulative Cases per Capita on 2021-01-01")
+
+```
+
+Then I will do the same for per capita new cases
+```{r}
+table_2 <- covid_jan_1_2021 %>% 
+  arrange(desc(per_capita_new_cases)) %>% 
+  head(5) %>% 
+  select(county, per_capita_new_cases) %>% 
+  flextable() %>% 
+  set_caption("Top 5 Colorado Counties with the most New Cases per Capita on 2021-01-01")
+```
+
+Now we just need to view the tables
+```{r}
+table_1
+table_2
+```
 
